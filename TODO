@@ -1,0 +1,2 @@
+-When multiple clients request the same hostname in a certain timeframe, the
+second client will find the cachedir there, but maybe no files yet. 
