@@ -24,6 +24,8 @@ var http = require('http'),
 
   defaultFavicon;
 
+var myTimeout = 15000;
+
 // Create the favicons directory.
 if (!fs.existsSync(__dirname + '/favicons/')) {
   console.log("Creating favicon dir");
@@ -52,7 +54,7 @@ function getFavicon(faviconObj, callback) {
   } else {
     protocol = http;
   }
-  protocol.get(url, function (res) {
+  var req = protocol.get(url, function (res) {
 
     var favicon,
       chunks = [],
@@ -79,6 +81,12 @@ function getFavicon(faviconObj, callback) {
   }).on('error', function (err) {
     console.log("Error retrieving favicon " + url + ": " + err.message);
     callback(faviconObj); // undefined
+  });
+  req.on('socket', function (socket) {
+    socket.setTimeout(myTimeout);  
+    socket.on('timeout', function() {
+        req.abort();
+    });
   });
 }
 
@@ -129,6 +137,7 @@ function getHTML(url, callback, protocol, root) {
     }
   }).on('error', function (err) {
     console.log("Error retrieving " + url + ": " + err.message);
+    callback();
   });
 }
 
@@ -199,7 +208,7 @@ function loadIcon (file, response) {
 }
 
 // Initialize HTTP server.
-http.globalAgent.maxSockets = Number.MAX_VALUE;
+http.globalAgent.maxSockets = 200;
 http.createServer(function (request, response) {
   var urlObj = url.parse(request.url, true);
   var size = 16;
