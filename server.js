@@ -47,6 +47,8 @@ fs.readFile(__dirname + '/default.ico', function (err, favicon) {
 function getFavicon(faviconObj, callback) {
   var protocol;
   var url = faviconObj.url;
+  url = url.substring(0, 5).toLowerCase() + url.substring(5);
+
   if (/https:\/\//.test(url)) {
     protocol = https;
   } else {
@@ -82,13 +84,15 @@ function getFavicon(faviconObj, callback) {
   });
 }
 
-function saveFavicon(filename, favicon) {
-  fs.writeFileSync(filename, favicon);
-    /* if (err) {
+function saveFavicon(filename, favicon, cb) {
+  fs.writeFile(filename, favicon.data, function (err) {
+    if (err) {
       console.log('Error saving favicon: ' + filename);
       console.log(err.message);
-    } 
-  }); */
+    } else {
+      cb (filename, favicon);
+    }
+  }); 
 }
 
 function getHTML(url, callback, protocol, root) {
@@ -219,10 +223,6 @@ http.createServer(function (request, response) {
   console.log("REQUEST");
 
   var host,
-
-    rootFavicon,
-    htmlFavicon,
-
     // These variables help us know when both
     // requests have returned and we can complete
     // the request.
@@ -260,30 +260,34 @@ http.createServer(function (request, response) {
         }
         var bestFound = false;
         var toReturn = null;
-        for (var i in favicons) {
-          // TODO: Eliminate duplicates based on MD5
-          var fi = favicons[i].data, orders;
+        for (var j in favicons) {
+          var fi = favicons[j], orders;
           var foldername = __dirname + '/favicons/' + host + "/";
-          var filename = __dirname + '/favicons/tmp/' + host + '-tmp-' + i + '.ico';
-          saveFavicon(filename, fi);
-          if (favicons[i].bgcolor) {
-            orders = [filename, "-background", favicons[i].bgcolor, "-alpha", "on", "-flatten", "-set", "filename:area", "%w", foldername + i + '.%[filename:area].png'];
-          } else {
-            orders = [filename, "-alpha", "on", "-set", "filename:area", "%w", foldername + i + '.%[filename:area].png'];
-          }
-          console.log ("*** Saved " + i + "/" + stored + " to " + filename, orders, favicons[i]);
-          // fs.rename(__dirname + '/favicons/' + filename, __dirname + '/favicons/' + host + '-' + size + '-' + i + '.ico', function (err) {
-          imagemagick.convert(orders, function (err, stdout) {
-            converted++;
-            if (err) {
-              console.log("Cannot convert", filename, foldername + '%[filename:area].png', err, stdout);
+          var filename = __dirname + '/favicons/tmp/' + host + '-tmp-' + j + '.ico';
+
+          var convertFn = function (thisFilename, fi, index) {
+            if (fi.bgcolor) {
+              orders = [thisFilename, "-background", fi.bgcolor, "-alpha", "on", "-flatten", "-set", "filename:area", "%w", foldername + j + '.%[filename:area].png'];
             } else {
-              console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
+              orders = [thisFilename, "-alpha", "on", "-set", "filename:area", "%w", foldername + j + '.%[filename:area].png'];
             }
-            if (converted == stored) {
-              serveFromCache(foldername, host);
-            }
-          });
+            console.log ("*** Saved " + index + " to " + thisFilename, orders, fi);
+            // fs.rename(__dirname + '/favicons/' + filename, __dirname + '/favicons/' + host + '-' + size + '-' + i + '.ico', function (err) {
+            imagemagick.convert(orders, function (err, stdout) {
+              converted++;
+              if (err) {
+                console.log("Cannot convert", thisFilename, foldername + '%[filename:area].png', err, stdout);
+              } else {
+                console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
+              }
+              if (converted == stored) {
+                serveFromCache(foldername, host);
+              }
+            });
+          };
+
+          saveFavicon(filename, fi, convertFn);
+
         }
       } else {
         console.log(" done() for " + root + ", stored " + stored + ", E " + expected + ", R " + returned + ", still expecting " + (expected - returned) + ", html loaded " + htmlLoaded);
