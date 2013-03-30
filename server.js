@@ -277,14 +277,9 @@ http.createServer(function (request, response) {
             converted++;
             if (err) {
               console.log("Cannot convert", filename, foldername + '%[filename:area].png', err, stdout);
-              return;
+            } else {
+              console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
             }
-            /* try {
-              fs.unlinkSync(filename);
-            } catch (ex) {
-              console.log("Couldn't unlink ico file after conversion", ex, filename);
-            } */
-            console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
             if (converted == stored) {
               serveFromCache(foldername, host);
             }
@@ -424,6 +419,6 @@ http.createServer(function (request, response) {
       done();
     }
   }, protocol, root);
-}).listen(8080, 'localhost');
+}).listen(8081, '0.0.0.0');
 
-console.log('Server running at http://localhost:8080/.');
+console.log('Server running at http://localhost:8081/.');
