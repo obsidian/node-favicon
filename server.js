@@ -216,6 +216,8 @@ http.createServer(function (request, response) {
       return;
   }
 
+  console.log("REQUEST");
+
   var host,
 
     rootFavicon,
@@ -302,12 +304,12 @@ http.createServer(function (request, response) {
         var stats = fs.statSync(foldername);
         var mtime = stats.mtime.getTime();
         if (mtime < expires) {
-          console.log ("Expire check IIIII ", mtime, expires, (mtime < expires));
+          console.log ("Expire check failed for folder " + foldername, mtime, expires);
           return false;
         }
       }
 
-      console.log("Read files for dir " + foldername , files);
+      console.log("Read files for dir " + foldername);
 
       for (var i in files) {
         var file = files[i];
@@ -317,7 +319,7 @@ http.createServer(function (request, response) {
         if (size == width) {
           console.log("   ++++ Returning perfect fit for host " + host + ": " + file + " width " + width);
           loadIcon (foldername + file, response);
-          return;
+          return true;
         } 
 
         // Otherwise, prefer something close to the required size
