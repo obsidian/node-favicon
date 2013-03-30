@@ -24,11 +24,13 @@ var http = require('http'),
 
   defaultFavicon;
 
-var myTimeout = 15000;
+var TIMEOUT = 15000,
+  DEBUG = false,
+  RETURN_DEFAULT = false;
 
 // Create the favicons directory.
 if (!fs.existsSync(__dirname + '/favicons/')) {
-  console.log("Creating favicon dir");
+  if (DEBUG) { console.log("Creating favicon dir"); }
   fs.mkdirSync(__dirname + '/favicons/');
 }
 
@@ -73,19 +75,19 @@ function getFavicon(faviconObj, callback) {
       });
     } else if (res.statusCode === 301 || res.statusCode === 302) {
       // Fetch the favicon at the given location.
-      console.log("Redirecting to: " + res.headers['location']);
+      DEBUG && console.log("Redirecting to: " + res.headers['location']);
       faviconObj.url = res.headers['location'];
       getFavicon(faviconObj, callback);
     } else {
-      console.log("Favicon not found: " + url);
+      DEBUG && console.log("Favicon not found: " + url);
       callback(faviconObj); // undefined
     }
   }).on('error', function (err) {
-    console.log("Error retrieving favicon " + url + ": " + err.message);
+    DEBUG && console.log("Error retrieving favicon " + url + ": " + err.message);
     callback(faviconObj); // undefined
   });
   req.on('socket', function (socket) {
-    socket.setTimeout(myTimeout);  
+    socket.setTimeout(TIMEOUT);  
     socket.on('timeout', function() {
         req.abort();
     });
@@ -197,6 +199,15 @@ function parseFaviconURL(html, root, protocol) {
   return icons;
 }
 
+function sendEmpty (response) {
+  if (RETURN_DEFAULT) {
+    response.writeHead(200, {'Content-Type': 'image/x-icon'});
+    response.end(defaultFavicon);
+  } else {
+    response.end();
+  }
+}
+
 function loadIcon (file, response) {
   // console.log(host + '.ico file stats: ', stats);
   fs.readFile(file, function (err, favicon) {
@@ -204,9 +215,8 @@ function loadIcon (file, response) {
       response.writeHead(200, {'Content-Type': 'image/png'});
       response.end(favicon);
     } else {
-      console.log('   EEEEEEEEE   Error reading ' + file);
-      console.log(err.message);
-      response.end();
+      DEBUG && console.log('loadIcon', 'Error reading ' + file, err.message);
+      sendEmpty (response);
     }
   });
 }
@@ -224,12 +234,9 @@ http.createServer(function (request, response) {
   var root = urlObj.pathname.substr(1);
 
   if (root == "favicon.ico") {
-      response.writeHead(200, {'Content-Type': 'image/x-icon'});
-      response.end(defaultFavicon);
+      sendEmpty (response);
       return;
   }
-
-  console.log("REQUEST");
 
   var host,
     // These variables help us know when both
@@ -250,7 +257,7 @@ http.createServer(function (request, response) {
         for (var i in favicons) {
           var favicon = favicons[i];
           if (newFavicon.data.compare(favicon.data) == 0) {
-            console.log ("done", "Favicon already known, skipping");
+            DEBUG && console.log ("done", "Favicon already known, skipping");
             skip = true;
             break;
           }
@@ -262,7 +269,7 @@ http.createServer(function (request, response) {
       }
 
       if (returned >= expected && htmlLoaded) {
-        console.log(" done() for " + root);
+        DEBUG && console.log(" done() for " + root);
 
         if (stored == 0) {
           response.end();
@@ -280,14 +287,14 @@ http.createServer(function (request, response) {
             } else {
               orders = [thisFilename, "-alpha", "on", "-set", "filename:area", "%w", foldername + j + '.%[filename:area].png'];
             }
-            console.log ("*** Saved " + index + " to " + thisFilename, orders, fi);
-            // fs.rename(__dirname + '/favicons/' + filename, __dirname + '/favicons/' + host + '-' + size + '-' + i + '.ico', function (err) {
+            DEBUG && console.log ("*** Saved " + index + " to " + thisFilename, orders, fi);
+            
             imagemagick.convert(orders, function (err, stdout) {
               converted++;
               if (err) {
                 console.log("Cannot convert", thisFilename, foldername + '%[filename:area].png', err, stdout);
               } else {
-                console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
+                DEBUG && console.log(" - Converted " + converted + "/" + stored + ": " + orders[0], stdout);
               }
               if (converted == stored) {
                 serveFromCache(foldername, host);
@@ -299,7 +306,7 @@ http.createServer(function (request, response) {
 
         }
       } else {
-        console.log(" done() for " + root + ", stored " + stored + ", E " + expected + ", R " + returned + ", still expecting " + (expected - returned) + ", html loaded " + htmlLoaded);
+        DEBUG && console.log(" done() for " + root + ", stored " + stored + ", E " + expected + ", R " + returned + ", still expecting " + (expected - returned) + ", html loaded " + htmlLoaded);
       }
     },
 
@@ -309,7 +316,7 @@ http.createServer(function (request, response) {
         var bestFit = null;
         var bestFitDifference = -100000;
        // Cache dir exists and is valid, read from cache
-        console.log("Read files for dir " + foldername);
+        DEBUG && console.log("Read files for dir " + foldername);
         fs.readdir(foldername, function (err, files) {
 
           if (err) {
@@ -323,7 +330,7 @@ http.createServer(function (request, response) {
 
             // Exact fits are best
             if (size == width) {
-              console.log("   ++++ Returning perfect fit for host " + host + ": " + file + " width " + width);
+              DEBUG && console.log("   ++++ Returning perfect fit for host " + host + ": " + file + " width " + width);
               loadIcon (foldername + file, response);
               return true;
             } 
@@ -339,16 +346,15 @@ http.createServer(function (request, response) {
               bestFitDifference = difference;
               bestFit = file;
             }
-            console.log("   ++ Looking at output file " + i + ", " + file + " width " + width + ", diff " + difference + ", bfd " + bestFitDifference);
+            DEBUG && console.log("   ++ Looking at output file " + i + ", " + file + " width " + width + ", diff " + difference + ", bfd " + bestFitDifference);
           }
 
 
           if (!bestFit) {
             // No fitting file was found in cache
-            response.writeHead(200, {'Content-Type': 'image/x-icon'});
-            response.end(defaultFavicon);
+            sendEmpty (response);
           }
-          console.log("   ++++ Returning best fit for host " + host + ": " + bestFit + " bestFit " + bestFitDifference);
+          DEBUG && console.log("   ++++ Returning best fit for host " + host + ": " + bestFit + " bestFit " + bestFitDifference);
           loadIcon (foldername + bestFit, response);
         });
       };
@@ -362,7 +368,7 @@ http.createServer(function (request, response) {
           } else {
             var mtime = stats.mtime.getTime();
             if (mtime < expires) {
-              console.log ("Expire check failed for folder " + foldername, mtime, expires);
+              DEBUG && console.log ("Expire check failed for folder " + foldername, mtime, expires);
               cb();
               return;
             }
@@ -393,10 +399,10 @@ http.createServer(function (request, response) {
     getFavicon(rootFavicon, function (faviconObj) {
       // If we got one, save it to disk and return it.
       if (faviconObj.data) {
-        console.log("Root favicon " + filename + " found for " + root);
+        DEBUG && console.log("Root favicon " + filename + " found for " + root);
         done(faviconObj);
       } else {
-        console.log("Root favicon " + filename + " NOT found for " + root);
+        DEBUG && console.log("Root favicon " + filename + " NOT found for " + root);
         done();
       }
     });  
@@ -414,30 +420,30 @@ http.createServer(function (request, response) {
         var faviconURLs = parseFaviconURL(html, root, protocol );
         // If we have a favicon URL, try to get it.
         if (faviconURLs && faviconURLs.length > 0) {
-          console.log('Found favicon for ' + root + ' in HTML: ' + JSON.stringify(faviconURLs));
+          DEBUG && console.log('Found favicon for ' + root + ' in HTML: ' + JSON.stringify(faviconURLs));
           expected += (faviconURLs.length);
           htmlLoaded = true;
           for (i in faviconURLs) {
             var faviconObj = faviconURLs[i];
-            console.log("  Retrieving " + faviconObj.url + " for " + root);
+            DEBUG && console.log("  Retrieving " + faviconObj.url + " for " + root);
             getFavicon(faviconObj, function (faviconObj) {
               if (faviconObj.data) {
-                console.log ("Favicon " + faviconObj.url + " found for " + root);
+                DEBUG && console.log ("Favicon " + faviconObj.url + " found for " + root);
                 done(faviconObj);
               } else {
-                console.log ("Favicon " + faviconObj.url + " NOT found for " + root);
+                DEBUG && console.log ("Favicon " + faviconObj.url + " NOT found for " + root);
                 done();
               }
             });
           }
         } else {
           htmlLoaded = true;
-          console.log('Favicon from HTML not downloaded: ' + root);
+          DEBUG && console.log('Favicon from HTML not downloaded: ' + root);
           done();
         }
       } else {
         htmlLoaded = true;
-        console.log('No HTML returned: ' + root);
+        DEBUG && console.log('No HTML returned: ' + root);
         done();
       }
     }, protocol, root);
@@ -446,7 +452,7 @@ http.createServer(function (request, response) {
   var cacheDir = __dirname + '/favicons/' + host + "/";
   fs.exists(cacheDir, function (exists) {
     if (!exists) {
-      console.log("Creating favicon dir", cacheDir);
+      DEBUG && console.log("Creating favicon dir", cacheDir);
       fs.mkdir(cacheDir, function (error) {
         retrieveAllFavicons();
       });

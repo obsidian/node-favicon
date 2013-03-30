@@ -1,2 +1,4 @@
 -When multiple clients request the same hostname in a certain timeframe, the
 second client will find the cachedir there, but maybe no files yet. 
+
+-The code will quite probably open the same files from HTML and per default (ie favicon.ico). Don't do this.
