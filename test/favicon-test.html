@@ -8,44 +8,19 @@
 
 var size = 48;
 
-var domains = [
-  'www.techcrunch.com',
-  'movies.yahoo.com',
-  'www.imdb.com',
-  'www.youtube.com',
-  'www.hulu.com',
-  'www.allmovie.com',
-  'www.rottentomatoes.com',
-  'www.nytimes.com',
-  'www.crackle.com',
-  'www.google.com',
-  'www.apple.com',
-  'www.github.com',
-  'www.godmode-trader.de',
-  'www.cbssports.com',
-  'www.facebook.com',
-  'www.baidu.com',
-  'www.wikipedia.com',
-  'en.wikipedia.org',
-  'www.amazon.com',
-  'www.qq.com',
-  'www.twitter.com',
-  'www.linkedin.com',
-  'www.bing.com',
-  'www.microsoft.com',
-  'www.ebay.com',
-  'www.tumblr.com',
-  'www.wordpress.com'
-];
+var domains = ["google.com","facebook.com","youtube.com","yahoo.com","baidu.com","wikipedia.org","live.com","qq.com","amazon.com","taobao.com","twitter.com","blogspot.com","linkedin.com","bing.com","sina.com.cn","yandex.ru","msn.com","ebay.com","wordpress.com","vk.com","163.com","weibo.com","microsoft.com","mail.ru","tumblr.com","pinterest.com","fc2.com","conduit.com","paypal.com","ask.com","hao123.com","craigslist.org","babylon.com","blogger.com","tmall.com","apple.com","imdb.com","sohu.com","avg.com","bbc.co.uk","soso.com","odnoklassniki.ru","mywebsearch.com","instagram.com","go.com","ifeng.com","aol.com","alibaba.com","stackoverflow.com","t.co","youku.com","360.cn","adobe.com","rakuten.co.jp","flickr.com","about.com","cnn.com","alipay.com","livedoor.com","delta-search.com","neobux.com","imgur.com","sogou.com","uol.com.br","dailymotion.com","netflix.com","huffingtonpost.com","360buy.com","espn.go.com","wordpress.org","ameblo.jp","globo.com","cnet.com","douban.com","directrev.com","incredibar.com","mediafire.com","wigetmedia.com","dropbox.com","weather.com","reddit.com","nytimes.com","vimeo.com","deviantart.com","ehow.com","indiatimes.com","bankofamerica.com","livejournal.com","renren.com","slideshare.net","blogfa.com","badoo.com","zedo.com","amazonaws.com","etsy.com","hulu.com","pandora.com","outbrain.com","optmd.com","target.com","secureserver.net","pch.com","indeed.com","answers.com","zillow.com","usps.com","bestbuy.com","ups.com","att.com","mozilla.org","skype.com","uploaded.net","stumbleupon.com","sourceforge.net","aweber.com","photobucket.com","fiverr.com","hootsuite.com","github.com","gmx.com","soundcloud.com","developers.facebook.com","archive.org","download.cnet.com","rediff.com","statcounter.com","scribd.com","clicksor.com","office.microsoft.com","my.yahoo.com","domaintools.com","myspace.com","hp.com","hostgator.com","iminent.com","imageshack.us","tagged.com","store.apple.com","webs.com","salesforce.com","msdn.microsoft.com","mashable.com","php.net","java.com","wikihow.com","ning.com","dell.com","constantcontact.com","seomoz.org","groups.google.com","intuit.com","speedtest.net"];
 
-// var domains = ['www.twitter.com'];
+// var domains = ["wikipedia.org"];
+
+var servers = [ "localhost", "192.168.32.121", "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5", "127.0.0.6", "127.0.0.7", "127.0.0.8"]
 
 var favicon,
   faviconDiv = document.getElementById('favicons'),
   faviconHTML = ['<ul>'];
 
 for (var i = 0, l = domains.length; i < l; i++) {
-  faviconHTML.push('<li><img width="' + size + '" height="' + size + '" src="http://localhost:8080/' + domains[i] + '?size=' + size + '"></li>');
+  var server = servers[i % servers.length];
+  faviconHTML.push('<li><img width="' + size + '" height="' + size + '" src="http://' + server + ':8081/' + domains[i] + '?size=' + size + '"></li>');
 }
 faviconHTML.push('</ul>');
 
