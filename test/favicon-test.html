@@ -6,30 +6,23 @@
 <script>
 (function () {
 
+var size = 114;
+
 var domains = [
   'www.techcrunch.com',
-  'www.movies.com',
-  'chicago.mrmovietimes.com',
   'movies.yahoo.com',
   'www.imdb.com',
-  'www.moviefone.com',
   'www.youtube.com',
-  'www.chicagoreader.com',
   'www.hulu.com',
   'www.allmovie.com',
-  'www.fandango.com',
   'www.rottentomatoes.com',
   'www.nytimes.com',
   'www.crackle.com',
-  'www.phdinparenting.com',
-  'espn.go.com',
-  'sportsillustrated.cnn.com',
-  'msn.foxsports.com',
-  'www.miniclip.com',
-  'nbcsports.msnbc.com',
-  'www.cbssports.com',
-  'www.suntimes.com',
   'www.google.com',
+  'www.apple.com',
+  'www.github.com',
+  'www.godmode-trader.de',
+  'www.cbssports.com',
   'www.facebook.com',
   'www.baidu.com',
   'www.wikipedia.com',
@@ -38,20 +31,21 @@ var domains = [
   'www.qq.com',
   'www.twitter.com',
   'www.linkedin.com',
-  'www.blogspot.com',
-  'www.msn.com',
   'www.bing.com',
   'www.microsoft.com',
   'www.ebay.com',
   'www.tumblr.com',
   'www.wordpress.com'
 ];
+
+// var domains = ['www.twitter.com'];
+
 var favicon,
   faviconDiv = document.getElementById('favicons'),
   faviconHTML = ['<ul>'];
 
 for (var i = 0, l = domains.length; i < l; i++) {
-  faviconHTML.push('<li><img width=16 height=16 src="http://localhost:8080/' + domains[i] + '"></li>');
+  faviconHTML.push('<li><img width="' + size + '" height="' + size + '" src="http://localhost:8080/' + domains[i] + '?size=' + size + '"></li>');
 }
 faviconHTML.push('</ul>');
 
