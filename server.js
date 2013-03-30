@@ -290,56 +290,75 @@ http.createServer(function (request, response) {
       }
     },
 
-    serveFromCache = function (foldername, host, expires) {
-      var files = fs.readdirSync(foldername);
-      var bestFit = null;
-      var bestFitDifference = -100000;
+    serveFromCache = function (foldername, host, expires, cb) {
+      var getBestFromCache = function () {
+
+        var bestFit = null;
+        var bestFitDifference = -100000;
+       // Cache dir exists and is valid, read from cache
+        console.log("Read files for dir " + foldername);
+        fs.readdir(foldername, function (err, files) {
+
+          if (err) {
+            console.log("serveFromCache", "Cannot read folder " + foldername);
+            cb();
+            return;
+          }
+          for (var i in files) {
+            var file = files[i];
+            var width = file.split(".")[1];
+
+            // Exact fits are best
+            if (size == width) {
+              console.log("   ++++ Returning perfect fit for host " + host + ": " + file + " width " + width);
+              loadIcon (foldername + file, response);
+              return true;
+            } 
+
+            // Otherwise, prefer something close to the required size
+            var difference = width - size;
+
+            // Positive difference means this image is bigger
+            if (difference > bestFitDifference && bestFitDifference > 0) {
+              continue;
+            }
+            if (difference > bestFitDifference) {
+              bestFitDifference = difference;
+              bestFit = file;
+            }
+            console.log("   ++ Looking at output file " + i + ", " + file + " width " + width + ", diff " + difference + ", bfd " + bestFitDifference);
+          }
+
+
+          if (!bestFit) {
+            // No fitting file was found in cache
+            response.writeHead(200, {'Content-Type': 'image/x-icon'});
+            response.end(defaultFavicon);
+          }
+          console.log("   ++++ Returning best fit for host " + host + ": " + bestFit + " bestFit " + bestFitDifference);
+          loadIcon (foldername + bestFit, response);
+        });
+      };
 
       if (expires) {
-        var stats = fs.statSync(foldername);
-        var mtime = stats.mtime.getTime();
-        if (mtime < expires) {
-          console.log ("Expire check failed for folder " + foldername, mtime, expires);
-          return false;
-        }
+        fs.stat(foldername, function (error, stats) {
+          if (error) {
+            console.log("serveFromCache", "Cannot stat", error)
+            cb ();
+            return;
+          } else {
+            var mtime = stats.mtime.getTime();
+            if (mtime < expires) {
+              console.log ("Expire check failed for folder " + foldername, mtime, expires);
+              cb();
+              return;
+            }
+            getBestFromCache();
+          }
+        });
+      } else {
+        getBestFromCache();
       }
-
-      console.log("Read files for dir " + foldername);
-
-      for (var i in files) {
-        var file = files[i];
-        var width = file.split(".")[1];
-
-        // Exact fits are best
-        if (size == width) {
-          console.log("   ++++ Returning perfect fit for host " + host + ": " + file + " width " + width);
-          loadIcon (foldername + file, response);
-          return true;
-        } 
-
-        // Otherwise, prefer something close to the required size
-        var difference = width - size;
-
-        // Positive difference means this image is bigger
-        if (difference > bestFitDifference && bestFitDifference > 0) {
-          continue;
-        }
-        if (difference > bestFitDifference) {
-          bestFitDifference = difference;
-          bestFit = file;
-        }
-        console.log("   ++ Looking at output file " + i + ", " + file + " width " + width + ", diff " + difference + ", bfd " + bestFitDifference);
-      }
-
-
-      if (!bestFit) {
-        // No fitting file was found in cache
-        response.writeHead(200, {'Content-Type': 'image/x-icon'});
-        response.end(defaultFavicon);
-      }
-      console.log("   ++++ Returning best fit for host " + host + ": " + bestFit + " bestFit " + bestFitDifference);
-      loadIcon (foldername + bestFit, response);
-      return true;
     };
 
 
@@ -351,17 +370,6 @@ http.createServer(function (request, response) {
   host = rootObj.host;
   root = rootObj.protocol + '//' + host;
 
-  var cacheDir = __dirname + '/favicons/' + host + "/";
-  if (!fs.existsSync(cacheDir)) {
-    console.log("Creating favicon dir", cacheDir);
-    fs.mkdirSync(cacheDir);
-  } else {
-    var expires = (new Date()).getTime() - (24 * 60 * 60 * 1000);  // One day in ms
-    // Check if we have the favicon in our cache
-    if (serveFromCache (cacheDir, host, expires)) {
-      return;
-    }
-  }
 
   var getRootFavicon = function (root, filename) {
     // expected++;
@@ -381,44 +389,61 @@ http.createServer(function (request, response) {
     });  
   }
 
-  getRootFavicon (root, "favicon.ico");
-  getRootFavicon (root, "apple-touch-icon.png");
-  getRootFavicon (root, "apple-touch-icon-precomposed.png");
+  var retrieveAllFavicons = function () {
+    getRootFavicon (root, "favicon.ico");
+    getRootFavicon (root, "apple-touch-icon.png");
+    getRootFavicon (root, "apple-touch-icon-precomposed.png");
 
-  // Try fetching the HTML and parsing it for the favicon.
-  getHTML(root, function (html) {
-    // If we have HTML, parse out the favicon link.
-    if (html) {
-      var faviconURLs = parseFaviconURL(html, root, protocol );
-      // If we have a favicon URL, try to get it.
-      if (faviconURLs && faviconURLs.length > 0) {
-        console.log('Found favicon for ' + root + ' in HTML: ' + JSON.stringify(faviconURLs));
-        expected += (faviconURLs.length);
-        htmlLoaded = true;
-        for (i in faviconURLs) {
-          var faviconObj = faviconURLs[i];
-          console.log("  Retrieving " + faviconObj.url + " for " + root);
-          getFavicon(faviconObj, function (faviconObj) {
-            if (faviconObj.data) {
-              console.log ("Favicon " + faviconObj.url + " found for " + root);
-              done(faviconObj);
-            } else {
-              console.log ("Favicon " + faviconObj.url + " NOT found for " + root);
-              done();
-            }
-          });
+    // Try fetching the HTML and parsing it for the favicon.
+    getHTML(root, function (html) {
+      // If we have HTML, parse out the favicon link.
+      if (html) {
+        var faviconURLs = parseFaviconURL(html, root, protocol );
+        // If we have a favicon URL, try to get it.
+        if (faviconURLs && faviconURLs.length > 0) {
+          console.log('Found favicon for ' + root + ' in HTML: ' + JSON.stringify(faviconURLs));
+          expected += (faviconURLs.length);
+          htmlLoaded = true;
+          for (i in faviconURLs) {
+            var faviconObj = faviconURLs[i];
+            console.log("  Retrieving " + faviconObj.url + " for " + root);
+            getFavicon(faviconObj, function (faviconObj) {
+              if (faviconObj.data) {
+                console.log ("Favicon " + faviconObj.url + " found for " + root);
+                done(faviconObj);
+              } else {
+                console.log ("Favicon " + faviconObj.url + " NOT found for " + root);
+                done();
+              }
+            });
+          }
+        } else {
+          htmlLoaded = true;
+          console.log('Favicon from HTML not downloaded: ' + root);
+          done();
         }
       } else {
         htmlLoaded = true;
-        console.log('Favicon from HTML not downloaded: ' + root);
+        console.log('No HTML returned: ' + root);
         done();
       }
+    }, protocol, root);
+  }
+
+  var cacheDir = __dirname + '/favicons/' + host + "/";
+  fs.exists(cacheDir, function (exists) {
+    if (!exists) {
+      console.log("Creating favicon dir", cacheDir);
+      fs.mkdir(cacheDir, function (error) {
+        retrieveAllFavicons();
+      });
     } else {
-      htmlLoaded = true;
-      console.log('No HTML returned: ' + root);
-      done();
+      var expires = (new Date()).getTime() - (24 * 60 * 60 * 1000);  // One day in ms
+      // Check if we have the favicon in our cache
+      serveFromCache (cacheDir, host, expires, retrieveAllFavicons);
     }
-  }, protocol, root);
+  });
+
 }).listen(8081, '0.0.0.0');
 
 console.log('Server running at http://localhost:8081/.');
