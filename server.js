@@ -24,9 +24,10 @@ var http = require('http'),
 
   defaultFavicon;
 
-var TIMEOUT = 15000,
-  DEBUG = false,
-  RETURN_DEFAULT = false;
+var TIMEOUT = 15000,  // Socket timeout
+  DEBUG = false,      // If true will output a metric ton of debuggig
+  RETURN_DEFAULT = false,   // If true will return default favicon instead of empty response
+  CACHE_TTL = 3 * 24 * 60 * 60 * 1000;  // The number of milliseconds a cache entry is considered valid
 
 // Create the favicons directory.
 if (!fs.existsSync(__dirname + '/favicons/')) {
@@ -457,7 +458,7 @@ http.createServer(function (request, response) {
         retrieveAllFavicons();
       });
     } else {
-      var expires = (new Date()).getTime() - (24 * 60 * 60 * 1000);  // One day in ms
+      var expires = (new Date()).getTime() - CACHE_TTL;
       // Check if we have the favicon in our cache
       serveFromCache (cacheDir, host, expires, retrieveAllFavicons);
     }
